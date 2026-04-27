@@ -2,44 +2,50 @@ name: Build iOS
 on:
   push:
     branches: [ main ]
+  workflow_dispatch: # Allows you to run the build manually from the Actions tab
 
 env:
-  # This tells the runner to use the new engine immediately
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
+  # Opt-in to the Node 24 engine for all GitHub Actions
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
-    runs-on: macos-latest 
+    runs-on: macos-latest
     steps:
+      # 1. Pull your code from GitHub
       - name: Checkout Source
-        # v6 is the standard as of early 2026 for Node 24 support
-        uses: actions/checkout@v6 
+        uses: actions/checkout@v6
 
+      # 2. Set up the Node environment for Angular
       - name: Setup Node.js
-        # v6 of setup-node removes the Node 20 legacy baggage
-        uses: actions/setup-node@v6 
+        uses: actions/setup-node@v6
         with:
           node-version: '24'
+          cache: 'npm' # Caches dependencies for faster future builds
 
+      # 3. Install Angular and Capacitor dependencies
       - name: Install Dependencies
-        run: npm install
+        run: npm ci # 'ci' is faster and more reliable than 'install' in cloud builds
 
+      # 4. Create the production web build
       - name: Build Angular Project
         run: npm run build -- --configuration=production
 
+      # 5. Sync the web code into the iOS folder
       - name: Capacitor Sync
         run: npx cap sync ios
-        # ... previous steps (npm install, cap sync, etc.)
 
+      # 6. Compile the native iOS code
+      # Note: This creates a 'Debug' build (unsigned) for testing
       - name: Build Xcode Project
         run: |
           cd ios/App
-          # This command creates a 'build' folder with your compiled app
           xcodebuild -scheme App -derivedDataPath build -sdk iphoneos
 
+      # 7. Upload the result so you can download it from the browser
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v6
         with:
-          name: ios-build-debug
-          # This points to the compiled .app or .ipa inside the Xcode build folder
+          name: ios-app-bundle
           path: ios/App/build/Build/Products/Debug-iphoneos/*.app
+          retention-days: 5 # Keeps the file for 5 days
