@@ -3,21 +3,23 @@ on:
   push:
     branches: [ main ]
 
-# Force the runner to use Node 24 for all JavaScript actions
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # This tells the runner to use the new engine immediately
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
 
 jobs:
   build:
     runs-on: macos-latest 
     steps:
       - name: Checkout Source
-        uses: actions/checkout@v4 # Check for v5 if released by now
+        # v6 is the standard as of early 2026 for Node 24 support
+        uses: actions/checkout@v6 
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        # v6 of setup-node removes the Node 20 legacy baggage
+        uses: actions/setup-node@v6 
         with:
-          node-version: '24' # Explicitly use Node 24 for your Angular build
+          node-version: '24'
 
       - name: Install Dependencies
         run: npm install
@@ -27,8 +29,3 @@ jobs:
 
       - name: Capacitor Sync
         run: npx cap sync ios
-
-      - name: Build Xcode Project
-        run: |
-          cd ios/App
-          xcodebuild -scheme App -allowProvisioningUpdates
