@@ -2,7 +2,6 @@ name: Build iOS
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
@@ -28,13 +27,20 @@ jobs:
       - name: Capacitor Sync
         run: npx cap sync ios
 
-      # This step packages the iOS folder so you can download it
-      - name: Archive iOS Project
-        run: zip -r ios-project.zip ios/App
+      # NEW: This actually compiles the code into an app
+      - name: Build Xcode Project
+        run: |
+          cd ios/App
+          xcodebuild \
+            -scheme App \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO
 
-      - name: Upload iOS Project Artifact
+      # This uploads the COMPILED app folder, not just the source code
+      - name: Upload Compiled App
         uses: actions/upload-artifact@v6
         with:
-          name: capacitor-ios-project
-          path: ios-project.zip
-          retention-days: 5
+          name: my-ios-app
+          path: ios/App/build/Build/Products/Debug-iphonesimulator/App.app
