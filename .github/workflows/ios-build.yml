@@ -2,50 +2,53 @@ name: Build iOS
 on:
   push:
     branches: [ main ]
-  workflow_dispatch: # Allows you to run the build manually from the Actions tab
+  workflow_dispatch:
 
 env:
-  # Opt-in to the Node 24 engine for all GitHub Actions
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
     runs-on: macos-latest
     steps:
-      # 1. Pull your code from GitHub
       - name: Checkout Source
         uses: actions/checkout@v6
 
-      # 2. Set up the Node environment for Angular
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '24'
-          cache: 'npm' # Caches dependencies for faster future builds
+          cache: 'npm'
 
-      # 3. Install Angular and Capacitor dependencies
       - name: Install Dependencies
-        run: npm ci # 'ci' is faster and more reliable than 'install' in cloud builds
+        run: npm ci
 
-      # 4. Create the production web build
       - name: Build Angular Project
         run: npm run build -- --configuration=production
 
-      # 5. Sync the web code into the iOS folder
       - name: Capacitor Sync
         run: npx cap sync ios
 
-      # 6. Compile the native iOS code
-      # Note: This creates a 'Debug' build (unsigned) for testing
+      # CRITICAL: Capacitor plugins need CocoaPods to compile on a Mac
+      - name: Install CocoaPods
+        run: |
+          cd ios/App
+          pod install
+
+      # We add '-sdk iphonesimulator' to bypass the need for a physical Apple Certificate
       - name: Build Xcode Project
         run: |
           cd ios/App
-          xcodebuild -scheme App -derivedDataPath build -sdk iphoneos
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath build
 
-      # 7. Upload the result so you can download it from the browser
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v6
         with:
-          name: ios-app-bundle
-          path: ios/App/build/Build/Products/Debug-iphoneos/*.app
-          retention-days: 5 # Keeps the file for 5 days
+          name: ios-simulator-build
+          path: ios/App/build/Build/Products/Debug-iphonesimulator/*.app
+          retention-days: 5
