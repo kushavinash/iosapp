@@ -9,7 +9,7 @@ env:
 
 jobs:
   build:
-    runs-on: macos-14 
+    runs-on: macos-14
     steps:
       - name: Checkout Source
         uses: actions/checkout@v6
@@ -20,23 +20,25 @@ jobs:
           node-version: '24'
 
       - name: Install Dependencies
-        # Using --force to bypass peer dependency conflicts common in Angular
-        run: npm install --force 
+        run: npm install --force
 
       - name: Build Angular Project
-        run: npm run build -- --configuration=production
+        # We add 'ls' to debug the folder structure if it fails
+        run: |
+          npm run build -- --configuration=production
+          ls -R dist/
 
       - name: Capacitor Sync
-        run: npx cap sync ios
+        run: |
+          npx cap sync ios
+          npx cap copy ios
 
       - name: Install CocoaPods
         run: |
           cd ios/App
-          pod repo update
           pod install
 
       - name: Build Xcode Project
-        # We add 'OTHER_CODE_SIGNING_FLAGS="--keychain test"' to force skip signing
         run: |
           xcodebuild \
             -workspace ios/App/App.xcworkspace \
@@ -46,12 +48,12 @@ jobs:
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ENTITLEMENTS="" \
-            BITCODE_GENERATION_MODE=bitcode
+            clean build \
+            | xcbeautify || xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
 
       - name: Upload Build Artifact
-        if: success()
+        if: always() # Upload logs even if it fails
         uses: actions/upload-artifact@v6
         with:
-          name: ios-simulator-app
-          path: build/Build/Products/Debug-iphonesimulator/*.app
+          name: ios-build-output
+          path: build/Build/Products/Debug-iphonesimulator/
