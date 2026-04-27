@@ -5,55 +5,36 @@ on:
   workflow_dispatch:
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-latest 
     steps:
       - name: Checkout Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6 
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6 
         with:
           node-version: '24'
 
       - name: Install Dependencies
-        run: npm install --force
+        run: npm install
 
       - name: Build Angular Project
-        # We add 'ls' to debug the folder structure if it fails
-        run: |
-          npm run build -- --configuration=production
-          ls -R dist/
+        run: npm run build -- --configuration=production
 
       - name: Capacitor Sync
-        run: |
-          npx cap sync ios
-          npx cap copy ios
+        run: npx cap sync ios
 
-      - name: Install CocoaPods
-        run: |
-          cd ios/App
-          pod install
+      # This step packages the iOS folder so you can download it
+      - name: Archive iOS Project
+        run: zip -r ios-project.zip ios/App
 
-      - name: Build Xcode Project
-        run: |
-          xcodebuild \
-            -workspace ios/App/App.xcworkspace \
-            -scheme App \
-            -configuration Debug \
-            -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            clean build \
-            | xcbeautify || xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
-
-      - name: Upload Build Artifact
-        if: always() # Upload logs even if it fails
+      - name: Upload iOS Project Artifact
         uses: actions/upload-artifact@v6
         with:
-          name: ios-build-output
-          path: build/Build/Products/Debug-iphonesimulator/
+          name: capacitor-ios-project
+          path: ios-project.zip
+          retention-days: 5
