@@ -29,3 +29,17 @@ jobs:
 
       - name: Capacitor Sync
         run: npx cap sync ios
+        # ... previous steps (npm install, cap sync, etc.)
+
+      - name: Build Xcode Project
+        run: |
+          cd ios/App
+          # This command creates a 'build' folder with your compiled app
+          xcodebuild -scheme App -derivedDataPath build -sdk iphoneos
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ios-build-debug
+          # This points to the compiled .app or .ipa inside the Xcode build folder
+          path: ios/App/build/Build/Products/Debug-iphoneos/*.app
